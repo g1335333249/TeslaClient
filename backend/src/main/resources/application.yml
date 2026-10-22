@@ -1,0 +1,48 @@
+server:
+  port: 8080
+  forward-headers-strategy: framework
+spring:
+  datasource:
+    url: ${JDBC_URL:jdbc:mysql://localhost:3306/voltmate?connectionTimeZone=UTC}
+    username: ${MYSQL_USER:voltmate}
+    password: ${MYSQL_PASSWORD:change-me}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate.jdbc.time_zone: UTC
+  flyway:
+    enabled: true
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: 6379
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+app:
+  worker-id: ${APP_WORKER_ID:1}
+  mode: ${TESLA_MODE:mock}
+  region: ${TESLA_REGION:CN}
+  token-key-base64: ${APP_TOKEN_KEY_BASE64:}
+  tesla:
+    client-id: ${TESLA_CLIENT_ID:}
+    client-secret: ${TESLA_CLIENT_SECRET:}
+    redirect-uri: ${TESLA_REDIRECT_URI:}
+    public-domain: ${TESLA_PUBLIC_DOMAIN:}
+    proxy-url: ${TESLA_PROXY_URL:}
+    telemetry-host: ${TESLA_TELEMETRY_HOST:}
+    telemetry-port: ${TESLA_TELEMETRY_PORT:443}
+    telemetry-ca-file: ${TESLA_TELEMETRY_CA_FILE:}
+  mqtt:
+    enabled: ${MQTT_ENABLED:false}
+    url: ${MQTT_URL:tcp://localhost:1883}
+    username: ${MQTT_USERNAME:}
+    password: ${MQTT_PASSWORD:}

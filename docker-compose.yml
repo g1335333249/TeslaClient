@@ -1,0 +1,113 @@
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-voltmate}
+      MYSQL_USER: ${MYSQL_USER:-voltmate}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-change-me}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-change-root}
+      TZ: UTC
+    command: ["--character-set-server=utf8mb4","--collation-server=utf8mb4_0900_ai_ci","--default-time-zone=+00:00"]
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL","mysqladmin ping -h localhost -uroot -p$$MYSQL_ROOT_PASSWORD"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server","--appendonly","no","--save",""]
+    healthcheck:
+      test: ["CMD","redis-cli","ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+  mqtt:
+    image: eclipse-mosquitto:2.0
+    volumes:
+      - ./infrastructure/mqtt/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mqtt_data:/mosquitto/data
+    healthcheck:
+      test: ["CMD-SHELL","mosquitto_sub -h localhost -t '$$SYS/broker/uptime' -C 1 -W 3 >/dev/null"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+  backend:
+    build: ./backend
+    environment:
+      TESLA_MODE: ${TESLA_MODE:-mock}
+      APP_WORKER_ID: ${APP_WORKER_ID:-1}
+      TESLA_REGION: ${TESLA_REGION:-CN}
+      JDBC_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-voltmate}?connectionTimeZone=UTC
+      MYSQL_USER: ${MYSQL_USER:-voltmate}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-change-me}
+      REDIS_HOST: redis
+      MQTT_ENABLED: "true"
+      MQTT_URL: tcp://mqtt:1883
+      APP_TOKEN_KEY_BASE64: ${APP_TOKEN_KEY_BASE64:-}
+      TESLA_CLIENT_ID: ${TESLA_CLIENT_ID:-}
+      TESLA_CLIENT_SECRET: ${TESLA_CLIENT_SECRET:-}
+      TESLA_REDIRECT_URI: ${TESLA_REDIRECT_URI:-}
+      TESLA_PUBLIC_DOMAIN: ${TESLA_PUBLIC_DOMAIN:-}
+      TESLA_PROXY_URL: ${TESLA_PROXY_URL:-}
+      TESLA_TELEMETRY_HOST: ${TESLA_TELEMETRY_HOST:-}
+      TESLA_TELEMETRY_PORT: ${TESLA_TELEMETRY_PORT:-443}
+      TESLA_TELEMETRY_CA_FILE: /etc/voltmate/secrets/telemetry-ca.pem
+    volumes:
+      - ./infrastructure/secrets:/etc/voltmate/secrets:ro
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      mysql: {condition: service_healthy}
+      redis: {condition: service_healthy}
+      mqtt: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD-SHELL","wget -q -O - http://localhost:8080/actuator/health | grep -q UP"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    logging:
+      options: {max-size: "10m", max-file: "3"}
+  nginx:
+    profiles: ["real"]
+    image: nginx:1.27-alpine
+    volumes:
+      - ./infrastructure/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./infrastructure/secrets:/etc/voltmate/secrets:ro
+    ports: ["80:80","443:443"]
+    depends_on: [backend]
+    restart: unless-stopped
+  tesla-proxy:
+    profiles: ["real"]
+    image: tesla/vehicle-command@sha256:e8adac679bf5e72790c588e620bb4a7992a8f80d4c3bd98da6d1129f59daf482
+    environment:
+      TESLA_HTTP_PROXY_TLS_CERT: /config/proxy-fullchain.pem
+      TESLA_HTTP_PROXY_TLS_KEY: /config/proxy-privkey.pem
+      TESLA_HTTP_PROXY_HOST: 0.0.0.0
+      TESLA_HTTP_PROXY_PORT: "4443"
+      TESLA_HTTP_PROXY_TIMEOUT: 20s
+      TESLA_KEY_FILE: /config/fleet-key.pem
+    volumes:
+      - ./infrastructure/secrets:/config:ro
+    expose: ["4443"]
+    security_opt: ["no-new-privileges:true"]
+    restart: unless-stopped
+  fleet-telemetry:
+    profiles: ["real"]
+    image: tesla/fleet-telemetry@sha256:7cb5f429210128b8edc5aac1e403589315893106f4c5a3ff85cb32213e2f8e37
+    command: ["/fleet-telemetry","-config=/etc/voltmate/fleet-server.json"]
+    volumes:
+      - ./infrastructure/mqtt/fleet-server.json:/etc/voltmate/fleet-server.json:ro
+      - ./infrastructure/secrets:/etc/voltmate/secrets:ro
+    ports: ["8443:443"]
+    depends_on: [mqtt]
+    security_opt: ["no-new-privileges:true"]
+    restart: unless-stopped
+volumes:
+  mysql_data:
+  mqtt_data:

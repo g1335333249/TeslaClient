@@ -1,0 +1,1 @@
+CREATE TABLE oauth_login_tickets (ticket_hash CHAR(64) PRIMARY KEY, user_id BIGINT NOT NULL, expires_at DATETIME(6) NOT NULL, consumed_at DATETIME(6), created_at DATETIME(6) NOT NULL, KEY ix_ticket_expiry(expires_at), FOREIGN KEY(user_id) REFERENCES users(id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

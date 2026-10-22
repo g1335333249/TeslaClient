@@ -1,0 +1,29 @@
+{
+  "host": "0.0.0.0",
+  "port": 443,
+  "log_level": "info",
+  "json_log_enable": true,
+  "namespace": "voltmate",
+  "rate_limit": {
+    "enabled": true,
+    "message_interval_time": 30,
+    "message_limit": 1000
+  },
+  "mqtt": {
+    "broker": "mqtt:1883",
+    "client_id": "voltmate-fleet-telemetry",
+    "topic_base": "telemetry",
+    "qos": 1,
+    "retained": false
+  },
+  "records": {
+    "V": ["mqtt"],
+    "alerts": ["mqtt"],
+    "errors": ["mqtt"],
+    "connectivity": ["mqtt"]
+  },
+  "tls": {
+    "server_cert": "/etc/voltmate/secrets/telemetry-fullchain.pem",
+    "server_key": "/etc/voltmate/secrets/telemetry-privkey.pem"
+  }
+}

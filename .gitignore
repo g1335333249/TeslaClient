@@ -1,0 +1,12 @@
+.env
+.DS_Store
+**/target/
+**/.build/
+**/DerivedData/
+**/xcuserdata/
+infrastructure/secrets/
+*.pem
+*.p12
+*.key
+*.crt
+!infrastructure/nginx/README.md
