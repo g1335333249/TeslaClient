@@ -97,6 +97,7 @@ struct UserSettings: Codable {
     var retentionDays: Int
     var locationEnabled: Bool
     var sampleIntervalSeconds: Int
+    var collectionEnabled: Bool
 }
 
 struct Tariff: Codable, Identifiable {

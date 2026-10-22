@@ -1,6 +1,8 @@
 package cn.voltmate.auth;
 
 import cn.voltmate.core.*;
+import cn.voltmate.vehicle.VehicleService;
+import cn.voltmate.history.MockHistory;
 import java.time.Instant;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
@@ -11,13 +13,16 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/auth")
 public class AuthController {
-    private final AppSessions sessions;private final JdbcTemplate db;private final Ids ids;private final String mode;
-    public AuthController(AppSessions sessions,JdbcTemplate db,Ids ids,@Value("${app.mode:mock}") String mode){this.sessions=sessions;this.db=db;this.ids=ids;this.mode=mode;}
+    private final AppSessions sessions;private final JdbcTemplate db;private final Ids ids;private final String mode;private final VehicleService vehicles;private final MockHistory history;
+    public AuthController(AppSessions sessions,JdbcTemplate db,Ids ids,@Value("${app.mode:mock}") String mode,VehicleService vehicles,MockHistory history){
+        this.sessions=sessions;this.db=db;this.ids=ids;this.mode=mode;this.vehicles=vehicles;this.history=history;
+    }
     @PostMapping("/demo")
     public Map<String,Object> demo(@RequestBody(required=false) Map<String,String> body){
         if(!"mock".equals(mode)) throw new ApiException(HttpStatus.NOT_FOUND,"MOCK_DISABLED","演示模式未启用");
         long userId=1001L;
         db.update("INSERT IGNORE INTO users(id,display_name,created_at) VALUES(?,?,?)",userId,"演示用户",java.sql.Timestamp.from(Instant.now()));
+        vehicles.seedMock();history.seed();
         return sessions.create(userId,body==null?"IOS":body.getOrDefault("clientType","IOS"));
     }
     @PostMapping("/logout") public Map<String,String> logout(@RequestHeader("Authorization") String authorization){sessions.revoke(authorization);return Map.of("status","revoked");}

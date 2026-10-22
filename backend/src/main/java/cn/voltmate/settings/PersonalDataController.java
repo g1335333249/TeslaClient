@@ -59,8 +59,32 @@ public class PersonalDataController {
         db.update("UPDATE vehicle_daily_statistics SET charging_kwh=0,charging_cost=0,charge_count=0 WHERE vehicle_id=?",vehicleId);
         return Map.of("status","deleted");
     }
+    @DeleteMapping("/data") @Transactional public Map<String,String> deletePersonalData(@RequestHeader("Authorization") String auth,@RequestHeader("X-Confirm-Delete") String confirm){
+        long user=sessions.require(auth);verify(confirm);
+        db.update("UPDATE users SET collection_paused=TRUE WHERE id=?",user);
+        Integer plans=db.queryForObject("SELECT COUNT(*) FROM charging_plans WHERE user_id=? AND apply_state='APPLIED'",Integer.class,user);
+        if(plans!=null&&plans>0)throw new ApiException(HttpStatus.CONFLICT,"ACTIVE_CHARGING_PLANS","请先删除已写入车辆的充电计划");
+        var rows=db.queryForList("SELECT vehicle_id FROM vehicle_user_access WHERE user_id=?",user);
+        for(var row:rows)exclusive(user,((Number)row.get("vehicle_id")).longValue());
+        for(var row:rows){long vehicle=((Number)row.get("vehicle_id")).longValue();
+            deleteTrips(auth,confirm,vehicle);deleteCharging(auth,confirm,vehicle);
+            db.update("UPDATE vehicle_status_latest SET latitude=NULL,longitude=NULL WHERE vehicle_id=?",vehicle);
+            db.update("DELETE FROM vehicle_signal_latest WHERE vehicle_id=? AND signal_name IN ('OriginLocation','DestinationLocation','DestinationName','RouteLine','GpsState','GpsHeading')",vehicle);
+            db.update("DELETE FROM vehicle_telemetry_samples WHERE vehicle_id=? AND signal_name IN ('OriginLocation','DestinationLocation','DestinationName','RouteLine','GpsState','GpsHeading')",vehicle);
+            db.update("DELETE FROM vehicle_telemetry_raw WHERE vehicle_id=? AND SUBSTRING_INDEX(topic,'/',-1) IN ('OriginLocation','DestinationLocation','DestinationName','RouteLine','GpsState','GpsHeading')",vehicle);
+        }
+        db.update("DELETE FROM notification_records WHERE user_id=?",user);
+        db.update("DELETE FROM vehicle_command_logs WHERE user_id=?",user);
+        db.update("DELETE FROM charging_plans WHERE user_id=?",user);
+        db.update("DELETE FROM charging_tariffs WHERE user_id=?",user);
+        db.update("DELETE FROM user_settings WHERE user_id=?",user);
+        db.update("DELETE FROM oauth_login_tickets WHERE user_id=?",user);
+        db.update("DELETE FROM oauth_states WHERE user_id=?",user);
+        return Map.of("status","deleted","scope","VoltMate personal history and settings");
+    }
     @DeleteMapping("/account") @Transactional public Map<String,String> deleteAccount(@RequestHeader("Authorization") String auth,@RequestHeader("X-Confirm-Delete") String confirm){
         long user=sessions.require(auth);verify(confirm);
+        db.update("UPDATE users SET collection_paused=TRUE WHERE id=?",user);
         var ids=db.queryForList("SELECT DISTINCT v.id AS vehicle_id,a.user_id AS owner_user_id FROM vehicles v LEFT JOIN tesla_accounts a ON a.id=v.account_id WHERE a.user_id=? OR EXISTS(SELECT 1 FROM vehicle_user_access x WHERE x.vehicle_id=v.id AND x.user_id=?)",user,user);
         for(var v:ids){long id=((Number)v.get("vehicle_id")).longValue();Object owner=v.get("owner_user_id");
             if(owner!=null&&((Number)owner).longValue()!=user)continue;

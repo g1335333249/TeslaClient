@@ -36,6 +36,8 @@ public class TelemetryIngestor {
         var rows=db.queryForList("SELECT v.id FROM vehicles v LEFT JOIN tesla_accounts a ON a.id=v.account_id WHERE v.vin=? AND (v.account_id IS NULL OR a.authorization_state='ACTIVE')",parts[1]);
         if(rows.isEmpty())return;
         long vehicle=((Number)rows.getFirst().get("id")).longValue();
+        var subscriptions=db.queryForList("SELECT u.collection_paused FROM users u JOIN vehicle_user_access a ON a.user_id=u.id WHERE a.vehicle_id=? FOR SHARE",vehicle);
+        if(subscriptions.isEmpty()||subscriptions.stream().allMatch(r->{Object paused=r.get("collection_paused");return Boolean.TRUE.equals(paused)||paused instanceof Number n&&n.intValue()!=0;}))return;
         if(parts.length==4&&LOCATION.contains(parts[3])){
             Integer disabled=db.queryForObject("SELECT COUNT(*) FROM vehicle_user_access a JOIN user_settings s ON s.user_id=a.user_id WHERE a.vehicle_id=? AND s.location_enabled=FALSE",Integer.class,vehicle);
             if(disabled!=null&&disabled>0)return;

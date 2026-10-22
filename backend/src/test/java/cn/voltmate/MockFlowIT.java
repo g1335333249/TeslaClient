@@ -113,6 +113,23 @@ class MockFlowIT {
         var again=http.exchange("/api/v1/privacy/export",HttpMethod.GET,new HttpEntity<>(headers),String.class);
         assertThat(again.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     }
+    @Test void personalDataDeletionKeepsAccountAndSession(){
+        db.update("INSERT IGNORE INTO users(id,display_name,created_at) VALUES(1005,'保留账户',UTC_TIMESTAMP(6))");
+        db.update("INSERT INTO vehicles(id,vin,display_name,region,key_state,created_at) VALUES(3005,'MOCKVINPRIVACY3005','隐私测试车','CN','PAIRED',UTC_TIMESTAMP(6))");
+        db.update("INSERT INTO vehicle_user_access(vehicle_id,user_id,access_level,created_at) VALUES(3005,1005,'OWNER',UTC_TIMESTAMP(6))");
+        db.update("INSERT INTO vehicle_status_latest(vehicle_id,source,updated_at,online_state) VALUES(3005,'MOCK',UTC_TIMESTAMP(6),'ONLINE')");
+        db.update("INSERT INTO user_settings(user_id,retention_days,location_enabled,sample_interval_seconds,updated_at) VALUES(1005,90,TRUE,60,UTC_TIMESTAMP(6))");
+        var token=(String)sessions.create(1005,"WEB").get("token");
+        HttpHeaders headers=new HttpHeaders();headers.setBearerAuth(token);headers.set("X-Confirm-Delete","DELETE_MY_DATA");
+        var result=http.exchange("/api/v1/privacy/data",HttpMethod.DELETE,new HttpEntity<>(headers),Map.class);
+        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(db.queryForObject("SELECT COUNT(*) FROM user_settings WHERE user_id=1005",Integer.class)).isZero();
+        assertThat(db.queryForObject("SELECT COUNT(*) FROM users WHERE id=1005",Integer.class)).isEqualTo(1);
+        assertThat(sessions.require("Bearer "+token)).isEqualTo(1005L);
+        assertThat(db.queryForObject("SELECT collection_paused FROM users WHERE id=1005",Boolean.class)).isTrue();
+        telemetry.ingest("telemetry/MOCKVINPRIVACY3005/v/BatteryLevel","50");
+        assertThat(db.queryForObject("SELECT COUNT(*) FROM vehicle_telemetry_raw WHERE vehicle_id=3005",Integer.class)).isZero();
+    }
     @Test void mockChargingPlanPersistsAndDeletesWithoutTeslaCall(){
         Map<?,?> login=http.postForObject("/api/v1/auth/demo",Map.of("clientType","IOS"),Map.class);
         HttpHeaders headers=new HttpHeaders();headers.setBearerAuth((String)login.get("token"));headers.setContentType(MediaType.APPLICATION_JSON);

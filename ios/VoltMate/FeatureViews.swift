@@ -149,6 +149,7 @@ struct PersonalDataView: View {
             Section("删除历史数据") {
                 Button("删除当前车辆行程与轨迹", role: .destructive) { deletion = "trips" }
                 Button("删除当前车辆充电历史", role: .destructive) { deletion = "charging" }
+                Button("删除全部历史与个人设置", role: .destructive) { deletion = "data" }
             }
             Section("注销") {
                 Button("删除 VoltMate 账户及个人数据", role: .destructive) { deletion = "account" }
@@ -173,7 +174,7 @@ struct PersonalDataView: View {
     }
     private func remove(_ type: String) async {
         guard let id = model.selectedVehicle?.id else { return }
-        let path = type == "account" ? "/api/v1/privacy/account" : "/api/v1/privacy/vehicles/\(id)/\(type)"
+        let path = type == "account" ? "/api/v1/privacy/account" : type == "data" ? "/api/v1/privacy/data" : "/api/v1/privacy/vehicles/\(id)/\(type)"
         do {
             _ = try await APIClient.shared.requestData(path, method: "DELETE", confirmDelete: true)
             if let exportURL { try? FileManager.default.removeItem(at: exportURL) }

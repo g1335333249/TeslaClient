@@ -373,7 +373,7 @@ struct StatisticsView: View {
 struct SettingsView: View {
     @EnvironmentObject var model: AppModel
     @AppStorage("serverURL") private var serverURL = "http://localhost:8080"
-    @State private var settings = UserSettings(retentionDays: 90, locationEnabled: true, sampleIntervalSeconds: 60)
+    @State private var settings = UserSettings(retentionDays: 90, locationEnabled: true, sampleIntervalSeconds: 60, collectionEnabled: true)
     @State private var tariffs: [Tariff] = []
     @State private var accounts: [TeslaAccount] = []
     @State private var consentURL: String?
@@ -420,6 +420,7 @@ struct SettingsView: View {
             }
             Section("数据与隐私") {
                 NavigationLink("个人数据导出与删除") { PersonalDataView() }
+                Toggle("采集车辆数据", isOn: $settings.collectionEnabled)
                 Toggle("保存车辆位置", isOn: $settings.locationEnabled)
                 Stepper("保留 \(settings.retentionDays) 天", value: $settings.retentionDays, in: 7...3650, step: 7)
                 Stepper("采样间隔 \(settings.sampleIntervalSeconds) 秒", value: $settings.sampleIntervalSeconds, in: 30...3600, step: 30)
@@ -427,7 +428,7 @@ struct SettingsView: View {
                     Task {
                         do {
                             let saved: UserSettings = try await APIClient.shared.request("/api/v1/settings", method: "PUT",
-                                body: ["retentionDays": settings.retentionDays, "locationEnabled": settings.locationEnabled, "sampleIntervalSeconds": settings.sampleIntervalSeconds])
+                                body: ["retentionDays": settings.retentionDays, "locationEnabled": settings.locationEnabled, "sampleIntervalSeconds": settings.sampleIntervalSeconds, "collectionEnabled": settings.collectionEnabled])
                             settings = saved; message = "设置已保存"
                         } catch { message = error.localizedDescription }
                     }
@@ -470,7 +471,7 @@ struct SettingsView: View {
             Button("退出登录", role: .destructive) { Task { await model.logout() } }
         }
         .navigationTitle("设置")
-        .task { await load() }
+        .onAppear { Task { await load() } }
         .confirmationDialog("将删除此车辆的历史轨迹和最新位置，确定继续？", isPresented: $confirmLocationDelete) {
             Button("删除位置数据", role: .destructive) {
                 Task {

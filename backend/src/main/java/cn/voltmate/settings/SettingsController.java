@@ -3,6 +3,7 @@ package cn.voltmate.settings;
 import cn.voltmate.auth.AppSessions;
 import cn.voltmate.core.*;
 import cn.voltmate.vehicle.VehicleService;
+import cn.voltmate.history.MockHistory;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -15,16 +16,16 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1")
 public class SettingsController {
-    public record Settings(int retentionDays,boolean locationEnabled,int sampleIntervalSeconds){}
+    public record Settings(int retentionDays,boolean locationEnabled,int sampleIntervalSeconds,Boolean collectionEnabled){}
     public record Tariff(long id,String name,BigDecimal pricePerKwh,String startsLocal,String endsLocal,String timezone,int dayMask,LocalDate validFrom,LocalDate validTo,int priority){}
     public record TariffInput(String name,BigDecimal pricePerKwh,String startsLocal,String endsLocal,String timezone,Integer dayMask,LocalDate validFrom,LocalDate validTo,Integer priority){}
-    private final AppSessions sessions;private final VehicleService vehicles;private final JdbcTemplate db;private final Ids ids;
-    public SettingsController(AppSessions sessions,VehicleService vehicles,JdbcTemplate db,Ids ids){this.sessions=sessions;this.vehicles=vehicles;this.db=db;this.ids=ids;}
+    private final AppSessions sessions;private final VehicleService vehicles;private final JdbcTemplate db;private final Ids ids;private final MockHistory mockHistory;
+    public SettingsController(AppSessions sessions,VehicleService vehicles,JdbcTemplate db,Ids ids,MockHistory mockHistory){this.sessions=sessions;this.vehicles=vehicles;this.db=db;this.ids=ids;this.mockHistory=mockHistory;}
     @GetMapping("/settings")
     public Settings get(@RequestHeader("Authorization") String auth){
-        long user=sessions.require(auth);var rows=db.query("SELECT retention_days,location_enabled,sample_interval_seconds FROM user_settings WHERE user_id=?",
-            (r,n)->new Settings(r.getInt(1),r.getBoolean(2),r.getInt(3)),user);
-        return rows.isEmpty()?new Settings(90,true,60):rows.getFirst();
+        long user=sessions.require(auth);var rows=db.query("SELECT COALESCE(s.retention_days,90),COALESCE(s.location_enabled,TRUE),COALESCE(s.sample_interval_seconds,60),u.collection_paused FROM users u LEFT JOIN user_settings s ON s.user_id=u.id WHERE u.id=?",
+            (r,n)->new Settings(r.getInt(1),r.getBoolean(2),r.getInt(3),!r.getBoolean(4)),user);
+        return rows.isEmpty()?new Settings(90,true,60,true):rows.getFirst();
     }
     @PutMapping("/settings")
     @Transactional
@@ -34,11 +35,15 @@ public class SettingsController {
             throw new ApiException(HttpStatus.BAD_REQUEST,"SETTINGS_RANGE","保留天数或采样间隔超出范围");
         db.update("INSERT INTO user_settings(user_id,retention_days,location_enabled,sample_interval_seconds,updated_at) VALUES(?,?,?,?,UTC_TIMESTAMP(6)) ON DUPLICATE KEY UPDATE retention_days=VALUES(retention_days),location_enabled=VALUES(location_enabled),sample_interval_seconds=VALUES(sample_interval_seconds),updated_at=VALUES(updated_at)",
             user,settings.retentionDays(),settings.locationEnabled(),settings.sampleIntervalSeconds());
+        boolean wasEnabled=Boolean.TRUE.equals(get(auth).collectionEnabled());
+        boolean enabled=settings.collectionEnabled()==null?wasEnabled:settings.collectionEnabled();
+        db.update("UPDATE users SET collection_paused=? WHERE id=?",!enabled,user);
+        if(enabled&&!wasEnabled)mockHistory.seed();
         if(!settings.locationEnabled()){
             for(var row:db.queryForList("SELECT vehicle_id FROM vehicle_user_access WHERE user_id=?",user))
                 deleteLocation(auth,((Number)row.get("vehicle_id")).longValue());
         }
-        return settings;
+        return new Settings(settings.retentionDays(),settings.locationEnabled(),settings.sampleIntervalSeconds(),enabled);
     }
     @GetMapping("/settings/tariffs")
     public List<Tariff> tariffs(@RequestHeader("Authorization") String auth){
