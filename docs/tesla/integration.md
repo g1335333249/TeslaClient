@@ -1,6 +1,6 @@
 # Tesla 中国区接入
 
-资料核对日期：2026-10-21。以 [中国区官方 Fleet API 文档](https://developer.tesla.cn/docs/fleet-api) 为最终依据。
+资料核对日期：2026-10-22。以 [中国区官方 Fleet API 文档](https://developer.tesla.cn/docs/fleet-api) 为最终依据。
 
 ## 端点
 
@@ -26,3 +26,9 @@
 本机 profile 暂映射遥测端口 8443。实际车端接入应给遥测服务独立域名和 443 端口，或使用保留 mTLS 的四层负载均衡；不要通过 HTTP 反向代理转发车端 mTLS WebSocket。代理服务的 TLS 证书必须被后端 JVM 信任。配置证书、密钥和域名后执行 `docker compose --profile real up -d`。
 
 当前仓库仍未完成真实 OAuth/配对及实车遥测验收。配置真实车辆前须完成密钥、域名、TLS、账号及车辆固件验收。官方镜像摘要需定期核对上游安全更新。
+
+## 0.2.0 能力与数据时间
+
+能力接口优先通过官方 `fleet_status` 获取虚拟钥匙配对、固件、遥测客户端版本和命令协议需求。某项指令未有足够证据时返回 `UNKNOWN`，不会仅按“Model Y L”名称推断。充电计划使用官方 `add_charge_schedule`、`remove_charge_schedule`，仅车辆确认后记为 `APPLIED`；无法从官方响应可靠读取的车辆已有计划，不伪装为本地已创建计划。
+
+官方 Fleet Telemetry MQTT datastore 的指标消息是 JSON 值，通常不包含唯一事件 ID 和源时间。VoltMate 对带 `eventId`、`observedAt` 的 Mock/测试封套可严格去重与排序；对于官方原生值只能以接收时间排序，并在短时间窗口内做内容去重。数据质量字段会记录 `RECEIVED_ONLY`。因此真实车端乱序与丢失补偿仍需实车验收。`ACChargingEnergyIn` 是 AC 充电器测得的单次输入电量，`DCChargingEnergyIn` 是电池侧电量；两者分别存储，费用优先使用 AC 输入电量，其他来源会标识估算。

@@ -122,6 +122,7 @@ struct HomeView: View {
                 } else if model.loading { ProgressView("正在加载车辆…").frame(maxWidth: .infinity).padding(50) }
                 else { ContentUnavailableView("暂无车辆", systemImage: "car.side", description: Text("请绑定 Tesla 车辆或进入演示模式")) }
                 if let error = model.error { Label(error, systemImage: "exclamationmark.triangle").foregroundStyle(.orange).font(.footnote) }
+                if let feedback = model.commandFeedback { Text(feedback).font(.footnote).foregroundStyle(.secondary) }
             }.padding()
         }
         .navigationTitle("车辆总览")
@@ -137,7 +138,9 @@ struct HomeView: View {
             if sensitive { pendingCommand = type } else { Task { await model.command(type) } }
         } label: {
             Label(title, systemImage: icon).frame(maxWidth: .infinity).padding(15)
-        }.buttonStyle(.bordered).disabled(model.loading || model.status?.onlineState != "ONLINE")
+        }.buttonStyle(.bordered)
+            .disabled(model.loading || model.status?.onlineState != "ONLINE" ||
+                      ["UNSUPPORTED","PERMISSION_REQUIRED","KEY_PAIRING_REQUIRED"].contains(model.capabilities?.state(type) ?? "UNKNOWN"))
     }
 }
 
@@ -256,14 +259,21 @@ struct ChargingView: View {
                 LabeledContent("电量", value: model.status?.soc.map { "\(Int($0))%" } ?? "暂不支持")
                 HStack {
                     Button("开始充电") { Task { await model.command("CHARGE_START") } }
+                        .disabled(["UNSUPPORTED","PERMISSION_REQUIRED","KEY_PAIRING_REQUIRED"].contains(model.capabilities?.state("CHARGE_START") ?? "UNKNOWN"))
                     Spacer()
                     Button("停止充电") { Task { await model.command("CHARGE_STOP") } }
+                        .disabled(["UNSUPPORTED","PERMISSION_REQUIRED","KEY_PAIRING_REQUIRED"].contains(model.capabilities?.state("CHARGE_STOP") ?? "UNKNOWN"))
                 }.disabled(model.status?.onlineState != "ONLINE")
                 VStack(alignment: .leading) {
                     Text("充电上限 \(Int(limit))%")
                     Slider(value: $limit, in: 50...100, step: 1)
                     Button("设置上限") { Task { await model.command("SET_CHARGE_LIMIT", value: Int(limit)) } }
+                        .disabled(["UNSUPPORTED","PERMISSION_REQUIRED","KEY_PAIRING_REQUIRED"].contains(model.capabilities?.state("SET_CHARGE_LIMIT") ?? "UNKNOWN"))
                 }
+            }
+            Section("计划与费用") {
+                NavigationLink("充电计划") { ChargingPlansView() }
+                NavigationLink("充电费用") { ChargingCostsView() }
             }
             Section("历史充电") {
                 if model.charging.isEmpty { Text("暂无充电记录").foregroundStyle(.secondary) }
@@ -287,6 +297,7 @@ struct StatisticsView: View {
     @State private var to = Date()
     @State private var daily: [DailyStat] = []
     @State private var monthly: [MonthlyStat] = []
+    @State private var costSummary: ChargingCostSummary?
     @State private var error: String?
     var body: some View {
         ScrollView {
@@ -302,14 +313,21 @@ struct StatisticsView: View {
                 Picker("指标", selection: $metric) {
                     Text("里程").tag(0); Text("能耗").tag(1); Text("充电").tag(2); Text("费用").tag(3)
                 }.pickerStyle(.segmented)
-                if daily.isEmpty { ContentUnavailableView("暂无统计数据", systemImage: "chart.bar", description: Text("车辆数据会逐日汇总")) }
+                if daily.isEmpty && (metric != 3 || costSummary?.daily.isEmpty != false) { ContentUnavailableView("暂无统计数据", systemImage: "chart.bar", description: Text("车辆数据会逐日汇总")) }
                 else {
-                    Chart(daily) { day in
-                        BarMark(x: .value("日期", day.day), y: .value("数值", value(day)))
-                            .foregroundStyle(accent.gradient)
-                    }.frame(height: 260)
-                    Text("近 30 天合计").font(.title2.bold())
-                    Text(String(format: "%.1f %@", daily.reduce(0) { $0 + value($1) }, unit))
+                    if metric == 3, let costSummary {
+                        Chart(costSummary.daily.keys.sorted(), id: \.self) { day in
+                            BarMark(x: .value("日期", day), y: .value("费用", costSummary.daily[day] ?? 0))
+                                .foregroundStyle(accent.gradient)
+                        }.frame(height: 260)
+                    } else {
+                        Chart(daily) { day in
+                            BarMark(x: .value("日期", day.day), y: .value("数值", value(day)))
+                                .foregroundStyle(accent.gradient)
+                        }.frame(height: 260)
+                    }
+                    Text("所选时段合计").font(.title2.bold())
+                    Text(String(format: "%.1f %@", metric == 3 ? (costSummary?.total ?? 0) : daily.reduce(0) { $0 + value($1) }, unit))
                         .font(.system(size: 38, weight: .bold, design: .rounded))
                     if !monthly.isEmpty {
                         Text("月度里程趋势").font(.title2.bold())
@@ -346,6 +364,7 @@ struct StatisticsView: View {
         do {
             daily = try await APIClient.shared.request(path)
             monthly = try await APIClient.shared.request("/api/v1/vehicles/\(id)/statistics/monthly")
+            costSummary = try await APIClient.shared.request("/api/v1/vehicles/\(id)/charging/cost-summary?from=\(DateFormatter.day.string(from: start))&to=\(DateFormatter.day.string(from: end))")
             error = nil
         } catch { self.error = error.localizedDescription }
     }
@@ -357,8 +376,11 @@ struct SettingsView: View {
     @State private var settings = UserSettings(retentionDays: 90, locationEnabled: true, sampleIntervalSeconds: 60)
     @State private var tariffs: [Tariff] = []
     @State private var accounts: [TeslaAccount] = []
+    @State private var consentURL: String?
     @State private var tariffName = "谷时"
     @State private var tariffPrice = "0.55"
+    @State private var tariffStart = "00:00"
+    @State private var tariffEnd = "00:00"
     @State private var message: String?
     @State private var confirmLocationDelete = false
     @State private var accountToUnlink: TeslaAccount?
@@ -388,12 +410,16 @@ struct SettingsView: View {
                         }
                     }
                     Button("重新授权") { Task { await model.connectTesla() } }
+                    if let consentURL, let url = URL(string: consentURL) {
+                        Link("在 Tesla 官网撤销应用授权", destination: url)
+                    }
                     ForEach(accounts) { account in
                         Button("解除账户 \(account.id) 授权", role: .destructive) { accountToUnlink = account }
                     }
                 }
             }
             Section("数据与隐私") {
+                NavigationLink("个人数据导出与删除") { PersonalDataView() }
                 Toggle("保存车辆位置", isOn: $settings.locationEnabled)
                 Stepper("保留 \(settings.retentionDays) 天", value: $settings.retentionDays, in: 7...3650, step: 7)
                 Stepper("采样间隔 \(settings.sampleIntervalSeconds) 秒", value: $settings.sampleIntervalSeconds, in: 30...3600, step: 30)
@@ -411,7 +437,7 @@ struct SettingsView: View {
             }
             Section("峰谷电价") {
                 ForEach(tariffs) { tariff in
-                    HStack { Text(tariff.name); Spacer(); Text(String(format: "¥%.2f/kWh", tariff.pricePerKwh)).foregroundStyle(.secondary) }
+                    HStack { Text("\(tariff.name) · \(tariff.startsLocal.prefix(5))–\(tariff.endsLocal.prefix(5))"); Spacer(); Text(String(format: "¥%.2f/kWh", tariff.pricePerKwh)).foregroundStyle(.secondary) }
                 }.onDelete { offsets in
                     let targets = offsets.map { tariffs[$0] }
                     Task {
@@ -423,18 +449,22 @@ struct SettingsView: View {
                 }
                 TextField("名称", text: $tariffName)
                 TextField("电价（元/kWh）", text: $tariffPrice).keyboardType(.decimalPad)
-                Button("添加全天电价") {
+                TextField("开始时间 HH:mm", text: $tariffStart).keyboardType(.numbersAndPunctuation)
+                TextField("结束时间 HH:mm", text: $tariffEnd).keyboardType(.numbersAndPunctuation)
+                Text("开始与结束均为 00:00 表示全天；结束时间早于开始时间表示跨午夜。")
+                    .font(.caption).foregroundStyle(.secondary)
+                Button("添加电价时段") {
                     Task {
                         do {
                             let _: Tariff = try await APIClient.shared.request("/api/v1/settings/tariffs", method: "POST",
-                                body: ["name": tariffName, "pricePerKwh": Double(tariffPrice) ?? 0, "startsLocal": "00:00:00", "endsLocal": "23:59:59", "timezone": "Asia/Shanghai"])
+                                body: ["name": tariffName, "pricePerKwh": Double(tariffPrice) ?? 0, "startsLocal": tariffStart, "endsLocal": tariffEnd, "timezone": "Asia/Shanghai"])
                             await load()
                         } catch { message = error.localizedDescription }
                     }
                 }
             }
             Section("关于") {
-                LabeledContent("版本", value: "0.1.0")
+                LabeledContent("版本", value: "0.2.0")
                 Text("位置与行程数据由你控制，请在服务端配置保留周期。").font(.footnote).foregroundStyle(.secondary)
             }
             Button("退出登录", role: .destructive) { Task { await model.logout() } }
@@ -470,6 +500,10 @@ struct SettingsView: View {
             settings = try await APIClient.shared.request("/api/v1/settings")
             tariffs = try await APIClient.shared.request("/api/v1/settings/tariffs")
             if !model.isDemo { accounts = try await APIClient.shared.request("/api/v1/auth/tesla/accounts") }
+            if !model.isDemo {
+                let consent: [String: String] = try await APIClient.shared.request("/api/v1/auth/tesla/consent-management")
+                consentURL = consent["url"]
+            }
         } catch { message = error.localizedDescription }
     }
 }

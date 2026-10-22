@@ -1,12 +1,10 @@
 package cn.voltmate.vehicle;
 
 import cn.voltmate.core.*;
-import cn.voltmate.auth.AppSessions;
 import cn.voltmate.tesla.*;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.*;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -37,24 +35,6 @@ public class VehicleService {
             r.getBigDecimal("latitude"),r.getBigDecimal("longitude"),config.mode.equals("mock")),id);
         if(rows.isEmpty()) throw new ApiException(HttpStatus.NOT_FOUND,"STATUS_UNAVAILABLE","暂无车辆状态");
         return rows.getFirst();
-    }
-    public Map<String,Object> capabilities(long user,long id){
-        owned(user,id);var v=one(user,id);
-        if(config.mode.equals("real")){
-            var row=db.queryForMap("SELECT account_id FROM vehicles WHERE id=?",id);
-            String token=tokens.access(((Number)row.get("account_id")).longValue());
-            var response=http.post(config.fleetBase()+"/api/1/vehicles/fleet_status",token,"{\"vins\":[\""+v.vin()+"\"]}");
-            boolean paired=false,unpaired=false;
-            for(var vin:response.path("response").path("key_paired_vins"))if(v.vin().equals(vin.asText()))paired=true;
-            for(var vin:response.path("response").path("unpaired_vins"))if(v.vin().equals(vin.asText()))unpaired=true;
-            String keyState=paired?"PAIRED":unpaired?"UNPAIRED":"UNKNOWN";
-            String firmware=response.path("response").path("vehicle_info").path(v.vin()).path("firmware_version").asText(null);
-            db.update("UPDATE vehicles SET key_state=?,firmware=COALESCE(?,firmware) WHERE id=?",keyState,firmware,id);
-            v=new VehicleDto.Vehicle(v.id(),v.vin(),v.name(),v.model(),v.color(),firmware==null?v.firmware():firmware,keyState,v.region());
-        }
-        boolean paired=config.mode.equals("mock")||"PAIRED".equals(v.keyState());
-        return Map.of("vehicleId",id,"keyState",v.keyState(),"commandsAvailable",paired,
-            "pairingUrl",config.mode.equals("real")?"https://tesla.cn/_ak/"+config.publicDomain:"");
     }
     public void seedMock(){
         if(!config.mode.equals("mock")) return;

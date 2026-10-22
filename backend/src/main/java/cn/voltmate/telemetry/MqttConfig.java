@@ -10,6 +10,7 @@ import org.springframework.integration.mqtt.inbound.MqttPahoMessageDrivenChannel
 import org.springframework.integration.mqtt.core.DefaultMqttPahoClientFactory;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessageHandler;
+import org.springframework.integration.StaticMessageHeaderAccessor;
 
 @Configuration
 @ConditionalOnProperty(name="app.mqtt.enabled",havingValue="true")
@@ -23,11 +24,15 @@ public class MqttConfig {
     @Bean MessageChannel telemetryInput(){return new DirectChannel();}
     @Bean MqttPahoMessageDrivenChannelAdapter mqttInbound(DefaultMqttPahoClientFactory factory){
         var adapter=new MqttPahoMessageDrivenChannelAdapter("voltmate-backend",factory,"telemetry/+/v/+","telemetry/+/connectivity","telemetry/+/errors/+");
-        adapter.setQos(1);adapter.setOutputChannel(telemetryInput());return adapter;
+        adapter.setQos(1);adapter.setManualAcks(true);adapter.setOutputChannel(telemetryInput());return adapter;
     }
     @Bean
     @ServiceActivator(inputChannel="telemetryInput")
     MessageHandler telemetryHandler(TelemetryIngestor ingestor){
-        return message->ingestor.ingest((String)message.getHeaders().get("mqtt_receivedTopic"),String.valueOf(message.getPayload()));
+        return message->{
+            ingestor.ingest((String)message.getHeaders().get("mqtt_receivedTopic"),String.valueOf(message.getPayload()));
+            var acknowledgment=StaticMessageHeaderAccessor.getAcknowledgment(message);
+            if(acknowledgment!=null)acknowledgment.acknowledge();
+        };
     }
 }

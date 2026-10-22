@@ -93,6 +93,12 @@ public class TeslaOAuthController {
         return sessions.create(((Number)rows.getFirst().get("user_id")).longValue(),(String)rows.getFirst().get("client_type"));
     }
     public record Account(long id,String region,String scopes,String authorizationState){}
+    @GetMapping("/consent-management")
+    public Map<String,String> consentManagement(@RequestHeader("Authorization") String authorization){
+        sessions.require(authorization);
+        if(config.mode.equals("mock"))return Map.of("url","");
+        return Map.of("url",config.authBase()+"/user/revoke/consent?revoke_client_id="+TeslaHttp.encode(config.clientId)+"&back_url="+TeslaHttp.encode("https://"+config.publicDomain));
+    }
     @GetMapping("/accounts")
     public List<Account> accounts(@RequestHeader("Authorization") String authorization){
         long user=sessions.require(authorization);

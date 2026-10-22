@@ -10,9 +10,11 @@
 		4DB5F2B038424F31EBDA777D /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF73C2B1DA4D98509E9FE33D /* AppModel.swift */; };
 		6804AB9F4E9ADE5DB1414DCB /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CD139BD8E2E1E740874EF79 /* APIClient.swift */; };
 		696A41A00D4EEB973B9881EB /* Views.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC218EC2D23462BB5419E502 /* Views.swift */; };
+		71FC1E32AD1BA3C05DE4B5BE /* VehicleRealtime.swift in Sources */ = {isa = PBXBuildFile; fileRef = B97B9CDF042CE694B883CD70 /* VehicleRealtime.swift */; };
 		749ED19E552CCED38B6D85B1 /* VoltMateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92F519AC9DC71EE5B346F558 /* VoltMateTests.swift */; };
 		75CE3301D748873BD71E4CFA /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4751B42424F690BEDC5EA129 /* Models.swift */; };
 		7EFD32FE2380D6C654DBF27F /* VoltMateApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EF36492E18EFD88675DDDD4 /* VoltMateApp.swift */; };
+		9D0984952049B4E9A40CB40E /* FeatureViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = BEF994C56D6588D123CEE4FB /* FeatureViews.swift */; };
 		BEA201DBD69A2481342D28CF /* TeslaAuth.swift in Sources */ = {isa = PBXBuildFile; fileRef = E57F984E2528A98E2F52420A /* TeslaAuth.swift */; };
 /* End PBXBuildFile section */
 
@@ -32,7 +34,9 @@
 		64D19717F3C5DA2422651DB3 /* VoltMateTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = VoltMateTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		92F519AC9DC71EE5B346F558 /* VoltMateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoltMateTests.swift; sourceTree = "<group>"; };
 		9EF36492E18EFD88675DDDD4 /* VoltMateApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoltMateApp.swift; sourceTree = "<group>"; };
+		B97B9CDF042CE694B883CD70 /* VehicleRealtime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleRealtime.swift; sourceTree = "<group>"; };
 		BD5D820418AD63AD6825311E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		BEF994C56D6588D123CEE4FB /* FeatureViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeatureViews.swift; sourceTree = "<group>"; };
 		E57F984E2528A98E2F52420A /* TeslaAuth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TeslaAuth.swift; sourceTree = "<group>"; };
 		E6AEA1EB016CE5C7BF37323C /* VoltMate.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = VoltMate.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		FC218EC2D23462BB5419E502 /* Views.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views.swift; sourceTree = "<group>"; };
@@ -54,9 +58,11 @@
 			children = (
 				4CD139BD8E2E1E740874EF79 /* APIClient.swift */,
 				FF73C2B1DA4D98509E9FE33D /* AppModel.swift */,
+				BEF994C56D6588D123CEE4FB /* FeatureViews.swift */,
 				BD5D820418AD63AD6825311E /* Info.plist */,
 				4751B42424F690BEDC5EA129 /* Models.swift */,
 				E57F984E2528A98E2F52420A /* TeslaAuth.swift */,
+				B97B9CDF042CE694B883CD70 /* VehicleRealtime.swift */,
 				FC218EC2D23462BB5419E502 /* Views.swift */,
 				9EF36492E18EFD88675DDDD4 /* VoltMateApp.swift */,
 			);
@@ -156,8 +162,10 @@
 			files = (
 				6804AB9F4E9ADE5DB1414DCB /* APIClient.swift in Sources */,
 				4DB5F2B038424F31EBDA777D /* AppModel.swift in Sources */,
+				9D0984952049B4E9A40CB40E /* FeatureViews.swift in Sources */,
 				75CE3301D748873BD71E4CFA /* Models.swift in Sources */,
 				BEA201DBD69A2481342D28CF /* TeslaAuth.swift in Sources */,
+				71FC1E32AD1BA3C05DE4B5BE /* VehicleRealtime.swift in Sources */,
 				696A41A00D4EEB973B9881EB /* Views.swift in Sources */,
 				7EFD32FE2380D6C654DBF27F /* VoltMateApp.swift in Sources */,
 			);
@@ -234,7 +242,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
@@ -258,7 +266,7 @@
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 0.2.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -357,7 +365,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -375,7 +383,7 @@
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 0.2.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";

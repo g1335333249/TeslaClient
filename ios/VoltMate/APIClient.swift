@@ -36,12 +36,17 @@ final class APIClient {
         return d
     }()
     func request<T: Decodable>(_ path: String, method: String = "GET", body: [String: Any]? = nil) async throws -> T {
+        let data = try await requestData(path, method: method, body: body)
+        return try decoder.decode(T.self, from: data)
+    }
+    func requestData(_ path: String, method: String = "GET", body: [String: Any]? = nil, confirmDelete: Bool = false, accept: String = "application/json") async throws -> Data {
         guard let url = URL(string: path, relativeTo: baseURL)?.absoluteURL else { throw URLError(.badURL) }
         var request = URLRequest(url: url)
         request.httpMethod = method
         request.timeoutInterval = 20
-        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue(accept, forHTTPHeaderField: "Accept")
         if let token = KeychainToken.load() { request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
+        if confirmDelete { request.setValue("DELETE_MY_DATA", forHTTPHeaderField: "X-Confirm-Delete") }
         if let body {
             request.httpBody = try JSONSerialization.data(withJSONObject: body)
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -51,7 +56,7 @@ final class APIClient {
         if !(200..<300).contains(http.statusCode) {
             throw (try? decoder.decode(APIError.self, from: data)) ?? APIError(code: "HTTP_\(http.statusCode)", message: "服务暂不可用")
         }
-        return try decoder.decode(T.self, from: data)
+        return data
     }
 }
 

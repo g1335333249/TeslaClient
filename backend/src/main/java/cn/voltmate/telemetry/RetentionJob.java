@@ -14,7 +14,7 @@ public class RetentionJob {
     }
     @Scheduled(cron="0 20 3 * * *",zone="UTC")
     public void clean(){
-        db.update("DELETE r FROM vehicle_telemetry_raw r JOIN vehicle_user_access a ON a.vehicle_id=r.vehicle_id JOIN user_settings s ON s.user_id=a.user_id WHERE r.received_at < UTC_TIMESTAMP(6)-INTERVAL s.retention_days DAY");
+        db.update("DELETE r FROM vehicle_telemetry_raw r JOIN vehicle_user_access a ON a.vehicle_id=r.vehicle_id JOIN user_settings s ON s.user_id=a.user_id LEFT JOIN vehicle_signal_latest l ON l.raw_id=r.id WHERE l.raw_id IS NULL AND r.received_at < UTC_TIMESTAMP(6)-INTERVAL s.retention_days DAY");
         db.update("DELETE p FROM vehicle_telemetry_samples p JOIN vehicle_user_access a ON a.vehicle_id=p.vehicle_id JOIN user_settings s ON s.user_id=a.user_id WHERE p.received_at < UTC_TIMESTAMP(6)-INTERVAL s.retention_days DAY");
     }
 }

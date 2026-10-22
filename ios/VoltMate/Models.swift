@@ -110,9 +110,22 @@ struct Tariff: Codable, Identifiable {
 
 struct VehicleCapabilities: Codable {
     let vehicleId: Int64
+    let model: String?
+    let firmwareVersion: String?
+    let telemetryVersion: String?
+    let commandProtocolRequired: Bool?
     let keyState: String
-    let commandsAvailable: Bool
+    let scopes: String
+    let capabilities: [String: CapabilityState]
     let pairingUrl: String
+    let checkedAt: Date
+    let mock: Bool
+    func state(_ command: String) -> String { capabilities[command]?.state ?? "UNKNOWN" }
+}
+
+struct CapabilityState: Codable {
+    let state: String
+    let reason: String
 }
 
 struct MonthlyStat: Codable, Identifiable {
@@ -129,4 +142,41 @@ struct TeslaAccount: Codable, Identifiable {
     let region: String
     let scopes: String
     let authorizationState: String
+}
+
+struct ChargingPlan: Codable, Identifiable {
+    let id: Int64
+    let teslaScheduleId: Int64
+    let settings: ChargingPlanSettings
+    let applyState: String
+    let lastError: String?
+    let updatedAt: Date
+}
+struct ChargingPlanSettings: Codable {
+    let latitude: Double
+    let longitude: Double
+    let startMinute: Int?
+    let endMinute: Int?
+    let startEnabled: Bool
+    let endEnabled: Bool
+    let daysOfWeek: String
+    let enabled: Bool
+    let oneTime: Bool
+}
+struct ChargingCost: Codable {
+    let sessionId: Int64
+    let amount: Double?
+    let currency: String
+    let accuracy: String
+    let source: String
+    let tariffBreakdown: [String: Double]
+    let dailyBreakdown: [String: Double]
+}
+struct ChargingCostSummary: Codable {
+    let currency: String
+    let total: Double
+    let daily: [String: Double]
+    let tariffBreakdown: [String: Double]
+    let estimatedCount: Int
+    let unavailableCount: Int
 }

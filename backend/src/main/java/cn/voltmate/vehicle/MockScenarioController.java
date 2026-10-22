@@ -24,6 +24,8 @@ public class MockScenarioController {
             case "LOW_BATTERY" -> db.update("UPDATE vehicle_status_latest SET soc=12,range_km=65 WHERE vehicle_id=?",vehicleId);
             case "CHARGING" -> db.update("UPDATE vehicle_status_latest SET online_state='ONLINE',charging_state='CHARGING',charging_kw=7 WHERE vehicle_id=?",vehicleId);
             case "NO_LOCATION" -> db.update("UPDATE vehicle_status_latest SET latitude=NULL,longitude=NULL WHERE vehicle_id=?",vehicleId);
+            case "COMMAND_FAILURE","COMMAND_TIMEOUT" -> db.update("UPDATE vehicle_status_latest SET data_json=JSON_OBJECT('mockFault',?) WHERE vehicle_id=?",scenario,vehicleId);
+            case "CLEAR_FAULT" -> db.update("UPDATE vehicle_status_latest SET data_json=NULL WHERE vehicle_id=?",vehicleId);
             default -> throw new ApiException(HttpStatus.BAD_REQUEST,"SCENARIO","不支持该演示场景");
         }
         return Map.of("scenario",scenario,"status","applied");
