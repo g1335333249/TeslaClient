@@ -2,6 +2,8 @@
 
 ## 0.2.1 — 2026-10-23
 
+- 将后端和 iOS GitHub Actions 拆为手动工作流，支持选择 Git ref 与校验版本；iOS 测试默认关闭，提供未签名设备 IPA。
+- 修复后端 Dockerfile 写死旧版本 JAR 名称的问题。
 - 增加独立 MySQL 8.4 Testcontainers 迁移回归测试，覆盖 V1–V9 全新安装、V1–V5 历史数据升级、Schema History 和重复启动。
 - 修复 MySQL `DATETIME` 映射为 `LocalDateTime` 时的转换异常，覆盖遥测、Token、充电统计和能力快照。
 - 修复充电计划重复日校验错误，以及缺少删除确认头被误判为未登录的问题，并加入回归测试。

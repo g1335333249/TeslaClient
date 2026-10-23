@@ -26,6 +26,8 @@ VoltMate 是中文 SwiftUI 特斯拉管家。仓库包含 Spring Boot 3.5 后端
 - `scripts/`：MySQL 备份与恢复。
 - `.github/workflows/`：后端与 iOS 构建验证。
 
+GitHub Actions 的后端与 iOS 工作流现在分别手动触发，均可选择 Git 分支、标签或提交，并核对指定版本。推送代码不会自动构建。iOS 默认只构建未签名的真机 IPA；Simulator 测试需在运行工作流时打开 `run_tests`。用法见 [手动构建说明](docs/deployment/actions.md)。
+
 ## 0.2.0 功能
 
 新增 Fleet 状态能力快照与命令前校验；遥测原始事件幂等、逐信号时间顺序和无效时间隔离；Tesla 充电计划提交与结果记录；按中国时区、日期及电价时段估算电费，支持手动填写实际费用；JSON/CSV 个人数据导出及确认后删除；按车辆授权订阅的 WebSocket 通知。iOS 增加充电计划、费用和个人数据入口，前台订阅车辆事件。API 详情见 [0.2 接口文档](docs/api/0.2.md) 和 [WebSocket 协议](docs/api/websocket.md)。

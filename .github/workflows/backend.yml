@@ -1,0 +1,52 @@
+name: Backend build
+
+on:
+  workflow_dispatch:
+    inputs:
+      git_ref:
+        description: Git branch, tag, or commit to build
+        required: true
+        default: main
+        type: string
+      expected_version:
+        description: Expected Maven version (leave empty to use the checked-out source)
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.git_ref }}
+          persist-credentials: false
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Check selected version
+        id: version
+        env:
+          EXPECTED_VERSION: ${{ inputs.expected_version }}
+        run: |
+          actual=$(python3 -c 'import xml.etree.ElementTree as ET; root=ET.parse("backend/pom.xml").getroot(); print(root.findtext("{http://maven.apache.org/POM/4.0.0}version"))')
+          if [ -z "$actual" ] || { [ -n "$EXPECTED_VERSION" ] && [ "$actual" != "$EXPECTED_VERSION" ]; }; then
+            echo "Version mismatch: source=$actual expected=$EXPECTED_VERSION" >&2
+            exit 1
+          fi
+          echo "version=$actual" >> "$GITHUB_OUTPUT"
+      - name: Build and run all backend tests
+        working-directory: backend
+        run: mvn -B -ntp clean verify
+      - name: Verify Docker image builds
+        run: docker build -t "voltmate-backend:${{ steps.version.outputs.version }}" backend
+      - uses: actions/upload-artifact@v4
+        with:
+          name: voltmate-backend-${{ steps.version.outputs.version }}
+          path: backend/target/backend-${{ steps.version.outputs.version }}.jar
+          if-no-files-found: error

@@ -1,0 +1,52 @@
+name: iOS unsigned IPA
+
+on:
+  workflow_dispatch:
+    inputs:
+      git_ref:
+        description: Git branch, tag, or commit to build
+        required: true
+        default: main
+        type: string
+      expected_version:
+        description: Expected iOS Version (leave empty to use the checked-out source)
+        required: false
+        type: string
+      run_tests:
+        description: Run iOS Simulator unit tests after packaging
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  ios:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.git_ref }}
+          persist-credentials: false
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '16.4'
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Check selected version
+        id: version
+        env:
+          EXPECTED_VERSION: ${{ inputs.expected_version }}
+        run: |
+          python3 scripts/ios-version.py ios/project.yml "$EXPECTED_VERSION" >> "$GITHUB_OUTPUT"
+      - name: Archive and package unsigned IPA
+        run: bash scripts/build-ios-unsigned-ipa.sh dist/ios
+      - uses: actions/upload-artifact@v4
+        with:
+          name: VoltMate-${{ steps.version.outputs.version }}-${{ steps.version.outputs.build }}-unsigned-ipa
+          path: dist/ios/*.ipa
+          if-no-files-found: error
+      - name: Run iOS Simulator tests
+        if: ${{ inputs.run_tests }}
+        run: bash scripts/test-ios.sh

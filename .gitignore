@@ -4,6 +4,7 @@
 **/.build/
 **/DerivedData/
 **/xcuserdata/
+/dist/
 infrastructure/secrets/
 *.pem
 *.p12
