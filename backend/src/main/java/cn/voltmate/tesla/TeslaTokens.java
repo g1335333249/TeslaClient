@@ -18,7 +18,7 @@ public class TeslaTokens {
         var rows=db.queryForList("SELECT t.access_ciphertext,t.refresh_ciphertext,t.expires_at,a.authorization_state FROM tesla_tokens t JOIN tesla_accounts a ON a.id=t.account_id WHERE t.account_id=? FOR UPDATE",accountId);
         if(rows.isEmpty()||!"ACTIVE".equals(rows.getFirst().get("authorization_state"))) throw new ApiException(HttpStatus.UNAUTHORIZED,"TESLA_AUTH_EXPIRED","请重新授权 Tesla");
         var row=rows.getFirst();
-        if(((Timestamp)row.get("expires_at")).toInstant().isAfter(Instant.now().plusSeconds(120))) return crypto.decrypt((String)row.get("access_ciphertext"));
+        if(SqlTime.instant(row.get("expires_at")).isAfter(Instant.now().plusSeconds(120))) return crypto.decrypt((String)row.get("access_ciphertext"));
         try {
             var refreshed=http.form(config.authBase()+"/oauth2/v3/token",Map.of("grant_type","refresh_token","client_id",config.clientId,"refresh_token",crypto.decrypt((String)row.get("refresh_ciphertext"))));
             String access=refreshed.path("access_token").asText(),refresh=refreshed.path("refresh_token").asText();

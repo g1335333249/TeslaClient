@@ -1,6 +1,7 @@
 package cn.voltmate.vehicle;
 
 import cn.voltmate.core.ApiException;
+import cn.voltmate.core.SqlTime;
 import cn.voltmate.tesla.TeslaConfig;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -95,7 +96,7 @@ public class VehicleCapabilityService {
             Map<String,VehicleCapabilityDTO.Capability> states=json.readValue((String)row.get("capabilities_json"),type);
             return new VehicleCapabilityDTO(id,(String)row.get("model"),(String)row.get("firmware_version"),(String)row.get("telemetry_version"),
                 (Boolean)row.get("command_protocol_required"),(String)row.get("key_state"),(String)row.get("scopes"),states,
-                pairingUrl(region),((Timestamp)row.get("checked_at")).toInstant(),false);
+                pairingUrl(region),SqlTime.instant(row.get("checked_at")),false);
         }catch(Exception e){throw new IllegalStateException("Capability snapshot read failed",e);}
     }
 }

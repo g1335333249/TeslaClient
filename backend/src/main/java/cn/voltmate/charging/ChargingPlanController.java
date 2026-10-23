@@ -78,10 +78,10 @@ public class ChargingPlanController {
         db.update("INSERT INTO vehicle_command_logs(id,vehicle_id,user_id,idempotency_key,command_type,outcome,error_code,created_at,completed_at) VALUES(?,?,?,?,?,?,?,UTC_TIMESTAMP(6),UTC_TIMESTAMP(6))",
             id,vehicle,user,"schedule-"+id,type,state.equals("APPLIED")?"SUCCESS":"FAILED",error);
     }
-    private static void validate(Input i){
+    static void validate(Input i){
         if(i==null||i.latitude()==null||i.longitude()==null||i.latitude().abs().compareTo(BigDecimal.valueOf(90))>0||i.longitude().abs().compareTo(BigDecimal.valueOf(180))>0||
             (!i.startEnabled()&&!i.endEnabled())||i.startEnabled()&&(i.startMinute()==null||i.startMinute()<0||i.startMinute()>1439)||
-            i.endEnabled()&&(i.endMinute()==null||i.endMinute()<0||i.endMinute()>1439)||i.daysOfWeek()==null||!i.daysOfWeek().matches("(?i)(MON|TUES|WED|THURS|FRI|SAT|SUN|ALL|WEEKDAYS)(,(MON|TUES|WED|THURS|FRI|SAT|SUN)) *"))
+            i.endEnabled()&&(i.endMinute()==null||i.endMinute()<0||i.endMinute()>1439)||i.daysOfWeek()==null||!i.daysOfWeek().matches("(?i)(ALL|WEEKDAYS|(?:MON|TUES|WED|THURS|FRI|SAT|SUN)(?:,(?:MON|TUES|WED|THURS|FRI|SAT|SUN))*)"))
             throw new ApiException(HttpStatus.BAD_REQUEST,"PLAN_INVALID","充电计划参数无效");
     }
 }

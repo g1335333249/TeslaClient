@@ -1,6 +1,6 @@
-# VoltMate 0.2.0
+# VoltMate 0.2.1
 
-VoltMate 是中文 SwiftUI 特斯拉管家。仓库包含 Spring Boot 3.5 后端、MySQL 8.4 数据迁移、MQTT 遥测入口、iOS 工程和 Docker Compose。当前开发版本为 **0.2.0**，尚未通过 V1.0 实车验收。
+VoltMate 是中文 SwiftUI 特斯拉管家。仓库包含 Spring Boot 3.5 后端、MySQL 8.4 数据迁移、MQTT 遥测入口、iOS 工程和 Docker Compose。当前开发版本为 **0.2.1**，尚未通过 V1.0 实车验收。
 
 ## 本地 Mock 启动
 
@@ -32,7 +32,7 @@ VoltMate 是中文 SwiftUI 特斯拉管家。仓库包含 Spring Boot 3.5 后端
 
 数据库只增量执行 Flyway V6–V9，不修改 V1–V5，也不清空 MySQL 卷。CSV 导出为包含多个表的 ZIP。费用缺少分时电量时按总电量和时长估算，并标记“估算费用”。删除全部历史与个人设置后会暂停车辆采集，可在设置中再次开启。
 
-本地构建与验收状态见 [0.2 验收记录](docs/deployment/0.2-validation.md)。
+本地构建与验收状态见 [0.2 最终验收记录](docs/deployment/0.2-final-validation.md)。
 
 ## 当前实现范围与缺口
 

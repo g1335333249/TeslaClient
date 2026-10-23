@@ -21,8 +21,8 @@ public class ChargingCostService {
         if(!manual.isEmpty())return new Cost(sessionId,(BigDecimal)manual.getFirst().get("manual_amount"),"CNY","ACTUAL","MANUAL",Map.of(),Map.of());
         var rows=db.queryForList("SELECT * FROM charging_sessions WHERE id=?",sessionId);
         if(rows.isEmpty())throw new ApiException(HttpStatus.NOT_FOUND,"CHARGE_NOT_FOUND","充电记录不存在");
-        var row=rows.getFirst();Instant start=((Timestamp)row.get("started_at")).toInstant();
-        Instant end=row.get("ended_at")==null?Instant.now():((Timestamp)row.get("ended_at")).toInstant();
+        var row=rows.getFirst();Instant start=SqlTime.instant(row.get("started_at"));
+        Instant end=row.get("ended_at")==null?Instant.now():SqlTime.instant(row.get("ended_at"));
         BigDecimal energy=(BigDecimal)row.get("grid_kwh");String source="GRID";
         if(energy==null){energy=(BigDecimal)row.get("estimated_kwh");source="ESTIMATED_ENERGY";}
         if(energy==null){energy=(BigDecimal)row.get("battery_kwh");source="BATTERY_DELTA";}

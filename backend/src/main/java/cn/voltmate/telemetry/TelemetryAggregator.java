@@ -1,6 +1,7 @@
 package cn.voltmate.telemetry;
 
 import cn.voltmate.core.Ids;
+import cn.voltmate.core.SqlTime;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
@@ -108,14 +109,14 @@ public class TelemetryAggregator {
             int closed=db.update("UPDATE driving_trips SET ended_at=last_motion_at,completeness=? WHERE id=? AND ended_at IS NULL",completeness,id);
             if(closed==0)continue;
             BigDecimal km=(BigDecimal)t.get("distance_km");
-            allocateTripDaily(vehicle,((Timestamp)t.get("started_at")).toInstant(),((Timestamp)t.get("last_motion_at")).toInstant(),km==null?BigDecimal.ZERO:km);
+            allocateTripDaily(vehicle,SqlTime.instant(t.get("started_at")),SqlTime.instant(t.get("last_motion_at")),km==null?BigDecimal.ZERO:km);
         }
         var charging=db.queryForList("SELECT id,vehicle_id,started_at,grid_kwh FROM charging_sessions WHERE ended_at IS NULL AND last_power_at<UTC_TIMESTAMP(6)-INTERVAL 5 MINUTE");
         for(var c:charging){
             long id=((Number)c.get("id")).longValue(),vehicle=((Number)c.get("vehicle_id")).longValue();
             if(db.update("UPDATE charging_sessions SET ended_at=last_power_at WHERE id=? AND ended_at IS NULL",id)==0)continue;
             BigDecimal kwh=(BigDecimal)c.get("grid_kwh");
-            java.sql.Date day=java.sql.Date.valueOf(((Timestamp)c.get("started_at")).toInstant().atZone(java.time.ZoneOffset.UTC).toLocalDate());
+            java.sql.Date day=java.sql.Date.valueOf(SqlTime.instant(c.get("started_at")).atZone(java.time.ZoneOffset.UTC).toLocalDate());
             db.update("INSERT INTO vehicle_daily_statistics(vehicle_id,day_utc,charging_kwh,charge_count,updated_at) VALUES(?,?,?,1,UTC_TIMESTAMP(6)) ON DUPLICATE KEY UPDATE charging_kwh=charging_kwh+VALUES(charging_kwh),charge_count=charge_count+1,updated_at=VALUES(updated_at)",
                 vehicle,day,kwh==null?BigDecimal.ZERO:kwh);
         }

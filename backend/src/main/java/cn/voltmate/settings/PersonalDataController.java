@@ -44,7 +44,7 @@ public class PersonalDataController {
             return ResponseEntity.ok().header(HttpHeaders.CONTENT_DISPOSITION,"attachment; filename=voltmate-data-csv.zip").cacheControl(CacheControl.noStore()).contentType(MediaType.parseMediaType("application/zip")).body(out.toByteArray());
         }catch(IOException e){throw new IllegalStateException("Export failed",e);}
     }
-    @DeleteMapping("/vehicles/{vehicleId}/trips") @Transactional public Map<String,String> deleteTrips(@RequestHeader("Authorization") String auth,@RequestHeader("X-Confirm-Delete") String confirm,@PathVariable long vehicleId){
+    @DeleteMapping("/vehicles/{vehicleId}/trips") @Transactional public Map<String,String> deleteTrips(@RequestHeader("Authorization") String auth,@RequestHeader(value="X-Confirm-Delete",required=false) String confirm,@PathVariable long vehicleId){
         long user=sessions.require(auth);verify(confirm);exclusive(user,vehicleId);
         db.update("DELETE p FROM driving_trip_points p JOIN driving_trips t ON t.id=p.trip_id WHERE t.vehicle_id=?",vehicleId);
         db.update("DELETE FROM driving_trips WHERE vehicle_id=?",vehicleId);
@@ -54,12 +54,12 @@ public class PersonalDataController {
         db.update("DELETE FROM vehicle_telemetry_raw WHERE vehicle_id=? AND SUBSTRING_INDEX(topic,'/',-1) IN ('VehicleSpeed','Odometer','Location')",vehicleId);
         return Map.of("status","deleted");
     }
-    @DeleteMapping("/vehicles/{vehicleId}/charging") @Transactional public Map<String,String> deleteCharging(@RequestHeader("Authorization") String auth,@RequestHeader("X-Confirm-Delete") String confirm,@PathVariable long vehicleId){
+    @DeleteMapping("/vehicles/{vehicleId}/charging") @Transactional public Map<String,String> deleteCharging(@RequestHeader("Authorization") String auth,@RequestHeader(value="X-Confirm-Delete",required=false) String confirm,@PathVariable long vehicleId){
         long user=sessions.require(auth);verify(confirm);exclusive(user,vehicleId);clearCharging(vehicleId);
         db.update("UPDATE vehicle_daily_statistics SET charging_kwh=0,charging_cost=0,charge_count=0 WHERE vehicle_id=?",vehicleId);
         return Map.of("status","deleted");
     }
-    @DeleteMapping("/data") @Transactional public Map<String,String> deletePersonalData(@RequestHeader("Authorization") String auth,@RequestHeader("X-Confirm-Delete") String confirm){
+    @DeleteMapping("/data") @Transactional public Map<String,String> deletePersonalData(@RequestHeader("Authorization") String auth,@RequestHeader(value="X-Confirm-Delete",required=false) String confirm){
         long user=sessions.require(auth);verify(confirm);
         db.update("UPDATE users SET collection_paused=TRUE WHERE id=?",user);
         Integer plans=db.queryForObject("SELECT COUNT(*) FROM charging_plans WHERE user_id=? AND apply_state='APPLIED'",Integer.class,user);
@@ -82,7 +82,7 @@ public class PersonalDataController {
         db.update("DELETE FROM oauth_states WHERE user_id=?",user);
         return Map.of("status","deleted","scope","VoltMate personal history and settings");
     }
-    @DeleteMapping("/account") @Transactional public Map<String,String> deleteAccount(@RequestHeader("Authorization") String auth,@RequestHeader("X-Confirm-Delete") String confirm){
+    @DeleteMapping("/account") @Transactional public Map<String,String> deleteAccount(@RequestHeader("Authorization") String auth,@RequestHeader(value="X-Confirm-Delete",required=false) String confirm){
         long user=sessions.require(auth);verify(confirm);
         db.update("UPDATE users SET collection_paused=TRUE WHERE id=?",user);
         var ids=db.queryForList("SELECT DISTINCT v.id AS vehicle_id,a.user_id AS owner_user_id FROM vehicles v LEFT JOIN tesla_accounts a ON a.id=v.account_id WHERE a.user_id=? OR EXISTS(SELECT 1 FROM vehicle_user_access x WHERE x.vehicle_id=v.id AND x.user_id=?)",user,user);

@@ -36,7 +36,7 @@ public class ChargingCostController {
             if(cost.accuracy().equals("ESTIMATED"))estimated++;
             cost.tariffBreakdown().forEach((name,amount)->byTariff.merge(name,amount,BigDecimal::add));
             if(cost.dailyBreakdown().isEmpty()){
-                String day=((java.sql.Timestamp)row.get("started_at")).toInstant().atZone(zone).toLocalDate().toString();daily.merge(day,cost.amount(),BigDecimal::add);
+                String day=SqlTime.instant(row.get("started_at")).atZone(zone).toLocalDate().toString();daily.merge(day,cost.amount(),BigDecimal::add);
             }else cost.dailyBreakdown().forEach((day,amount)->daily.merge(day,amount,BigDecimal::add));
         }
         return Map.of("currency","CNY","total",total,"daily",daily,"tariffBreakdown",byTariff,"estimatedCount",estimated,"unavailableCount",unavailable);

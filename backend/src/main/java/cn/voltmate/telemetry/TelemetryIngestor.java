@@ -2,6 +2,7 @@ package cn.voltmate.telemetry;
 
 import cn.voltmate.core.Crypto;
 import cn.voltmate.core.Ids;
+import cn.voltmate.core.SqlTime;
 import cn.voltmate.vehicle.VehicleEvents;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -109,7 +110,7 @@ public class TelemetryIngestor {
             vehicle,signal,Timestamp.from(observed),Timestamp.from(received),rawId);
         if(inserted==1)return true;
         var row=db.queryForMap("SELECT observed_at FROM vehicle_signal_latest WHERE vehicle_id=? AND signal_name=? FOR UPDATE",vehicle,signal);
-        if(!observed.isAfter(((Timestamp)row.get("observed_at")).toInstant()))return false;
+        if(!observed.isAfter(SqlTime.instant(row.get("observed_at"))))return false;
         db.update("UPDATE vehicle_signal_latest SET observed_at=?,received_at=?,raw_id=? WHERE vehicle_id=? AND signal_name=?",
             Timestamp.from(observed),Timestamp.from(received),rawId,vehicle,signal);
         return true;
